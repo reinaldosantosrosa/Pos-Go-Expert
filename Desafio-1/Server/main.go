@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Cotacao/Util"
 	"encoding/json"
 	"io"
 	"log"
@@ -52,6 +53,12 @@ func cotacao(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Contenty-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode("O Valor da Cotação de hoje " + string(cotacao.USDBRL.Bid))
+
+		err := Util.AppendCreateArq("Valor da cotacao do Dolar: "+string(cotacao.USDBRL.Bid)+"\n", "Arquivo.txt")
+
+		if err != nil {
+			panic(err)
+		}
 
 	case <-ctx.Done():
 		log.Println("Request cancelada pelo cliente")
