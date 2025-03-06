@@ -1,11 +1,12 @@
 package main
 
 import (
-	"Cotacao/Util"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"reinaldosantosrosa/Pos-Go-Expert/Cotacao/Banco"
+	"reinaldosantosrosa/Pos-Go-Expert/Cotacao/Util"
 	"time"
 )
 
@@ -28,6 +29,7 @@ type CotacaoDolar struct {
 func main() {
 
 	http.HandleFunc("/cotacao", cotacao)
+	http.HandleFunc("/", IncluirCotacao)
 	http.ListenAndServe(":8080", nil)
 
 }
@@ -35,9 +37,9 @@ func main() {
 func cotacao(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	log.Println("Request iniciada")
+	log.Println("Request cotacao iniciada")
 
-	defer log.Println("Request finalizada")
+	defer log.Println("Request cotacao finalizada")
 
 	select {
 	case <-time.After(200 * time.Millisecond):
@@ -52,9 +54,10 @@ func cotacao(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Contenty-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode("O Valor da Cotação de hoje " + string(cotacao.USDBRL.Bid))
 
-		err := Util.AppendCreateArq("Valor da cotacao do Dolar: "+string(cotacao.USDBRL.Bid)+"\n", "Arquivo.txt")
+		json.NewEncoder(w).Encode(cotacao.USDBRL.Bid)
+
+		err := Util.AppendCreateArq("Valor da cotacao do Dolar:  "+string(cotacao.USDBRL.Bid)+"\n", "Arquivo.txt")
 
 		if err != nil {
 			panic(err)
@@ -63,6 +66,34 @@ func cotacao(w http.ResponseWriter, r *http.Request) {
 	case <-ctx.Done():
 		log.Println("Request cancelada pelo cliente")
 	}
+}
+
+func IncluirCotacao(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	amountParam := r.URL.Query().Get("amount")
+	if amountParam == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	log.Println("Request do banco de dados iniciada")
+
+	defer log.Println("Request do banco finalizada")
+
+	select {
+	case <-time.After(300 * time.Millisecond):
+		log.Println("Registrando Cotação no banco de dados")
+		Banco.InsertCotation(time.Now(), amountParam)
+
+	case <-ctx.Done():
+		log.Println("Erro ao acessar o banco de dados")
+	}
+
 }
 
 func BuscaCotacao() (*CotacaoDolar, error) {
